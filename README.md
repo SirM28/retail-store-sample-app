@@ -1,180 +1,236 @@
-![Banner](./docs/images/banner.png)
+# 🏬 Project Bedrock — Retail Store Microservices on AWS EKS
 
-<div align="center">
-  <div align="center">
+This project is part of the **AltSchool of Engineering Tinyuka Semester (Cloud Engineering Track)**.  
+It demonstrates full **Infrastructure as Code (IaC)** provisioning, **containerized microservices**, and a complete **CI/CD pipeline** for deploying workloads to **Amazon EKS**.
 
-[![Stars](https://img.shields.io/github/stars/aws-containers/retail-store-sample-app)](Stars)
-![GitHub License](https://img.shields.io/github/license/aws-containers/retail-store-sample-app?color=green)
-![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Faws-containers%2Fretail-store-sample-app%2Frefs%2Fheads%2Fmain%2F.release-please-manifest.json&query=%24%5B%22.%22%5D&label=release)
-![GitHub Release Date](https://img.shields.io/github/release-date/aws-containers/retail-store-sample-app)
+---
 
-  </div>
+## 🧱 Project Overview
 
-  <strong>
-  <h2>AWS Containers Retail Sample</h2>
-  </strong>
-</div>
+The **Retail Store Sample App** is a microservices-based retail platform designed to simulate a production-grade cloud environment.  
+It uses **Terraform** for infrastructure provisioning, **Docker** for containerization, and **GitHub Actions** for automated deployments.
 
-This is a sample application designed to illustrate various concepts related to containers on AWS. It presents a sample retail store application including a product catalog, shopping cart and checkout.
+### 🧩 Microservices
+Each service runs as a separate containerized app deployed to EKS:
+- `orders-service` — manages order creation and retrieval  
+- `catalog-service` — manages product data (via MySQL RDS)  
+- `cart-service` — manages customer shopping carts (via DynamoDB)
 
-It provides:
+---
 
-- A demo store-front application with themes, pages to show container and application topology information, generative AI chat bot and utility functions for experimentation and demos.
-- An optional distributed component architecture using various languages and frameworks
-- A variety of different persistence backends for the various components like MariaDB (or MySQL), DynamoDB and Redis
-- The ability to run in different container orchestration technologies like Docker Compose, Kubernetes etc.
-- Pre-built container images for both x86-64 and ARM64 CPU architectures
-- All components instrumented for Prometheus metrics and OpenTelemetry OTLP tracing
-- Support for Istio on Kubernetes
-- Load generator which exercises all of the infrastructure
+## ☁️ Cloud Architecture
 
-See the [features documentation](./docs/features.md) for more information.
+| Component | Description |
+|------------|-------------|
+| **Amazon EKS** | Hosts all retail microservices in Kubernetes pods |
+| **VPC, Subnets, Gateways** | Provisioned via Terraform |
+| **Amazon RDS (MySQL)** | Product catalog storage |
+| **Amazon DynamoDB** | Cart data storage |
+| **IAM Roles/Policies** | Granular roles for Terraform, EKS, and developer access |
+| **LoadBalancer Service** | Exposes microservices to the internet |
+| **S3 Backend** | Stores Terraform state files remotely |
+| **GitHub OIDC Role** | Enables GitHub Actions to deploy securely without static AWS keys |
 
-**This project is intended for educational purposes only and not for production use**
+---
 
-![Screenshot](/docs/images/screenshot.png)
+## 🏗️ Infrastructure as Code (IaC)
 
-## Application Architecture
+Infrastructure is fully managed via **Terraform** and modularized for maintainability.
 
-The application has been deliberately over-engineered to generate multiple de-coupled components. These components generally have different infrastructure dependencies, and may support multiple "backends" (example: Carts service supports MongoDB or DynamoDB).
-
-![Architecture](/docs/images/architecture.png)
-
-| Component                  | Language | Container Image                                                             | Helm Chart                                                                        | Description                             |
-| -------------------------- | -------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------- |
-| [UI](./src/ui/)            | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-ui)       | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-ui-chart)       | Store user interface                    |
-| [Catalog](./src/catalog/)  | Go       | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-catalog)  | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-catalog-chart)  | Product catalog API                     |
-| [Cart](./src/cart/)        | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-cart)     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-cart-chart)     | User shopping carts API                 |
-| [Orders](./src/orders)     | Java     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-orders)   | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-orders-chart)   | User orders API                         |
-| [Checkout](./src/checkout) | Node     | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-checkout) | [Link](https://gallery.ecr.aws/aws-containers/retail-store-sample-checkout-chart) | API to orchestrate the checkout process |
-
-## Quickstart
-
-The following sections provide quickstart instructions for various platforms.
-
-### Docker
-
-This deployment method will run the application as a single container on your local machine using `docker`.
-
-Pre-requisites:
-
-- Docker installed locally
-
-Run the container:
-
+### 🗂️ Terraform Directory Structure
 ```
-docker run -it --rm -p 8888:8080 public.ecr.aws/aws-containers/retail-store-sample-ui:1.0.0
+terraform/
+│
+├── main.tf                # Root configuration and provider setup
+├── vpc.tf                 # Networking (VPC, subnets, route tables)
+├── eks.tf                 # EKS cluster, node groups, IAM roles
+├── rds.tf                 # RDS MySQL instance
+├── dynamodb.tf            # DynamoDB table for cart service
+├── iam-developer-readonly.tf  # IAM read-only developer user
+├── github_oidc_role.tf    # GitHub Actions OIDC integration
+└── outputs.tf             # Exposed infrastructure outputs
 ```
 
-Open the frontend in a browser window:
+### 🪄 Key Terraform Outputs
+| Output | Description |
+|---------|-------------|
+| `cluster_name` | EKS cluster name |
+| `cluster_endpoint` | API server endpoint |
+| `rds_mysql_endpoint` | MySQL connection string |
+| `dynamodb_table_name` | DynamoDB table name |
+| `kubeconfig_aws_auth_command` | Command to configure kubectl |
+| `developer_readonly_user` | IAM user for developer access |
 
-```
-http://localhost:8888
-```
+---
 
-To stop the container in `docker` use Ctrl+C.
+## 🔐 IAM & Security
 
-### Docker Compose
+### 1. **GitHub Actions OIDC Role**
+Allows GitHub workflows to assume an IAM role (`bedrock-terraform-role`) using OIDC authentication — no static credentials required.
 
-This deployment method will run the application on your local machine using `docker-compose`.
+### 2. **Read-Only Developer IAM User**
+Created for observation-only access with permissions to:
+- `eks:List*`, `eks:Describe*`
+- `cloudwatch:Get*`, `logs:Get*`
+- `rds:Describe*`
+- `dynamodb:List*`, `dynamodb:Query*`
+- `s3:List*`, `s3:Get*`
 
-Pre-requisites:
+---
 
-- Docker installed locally
+## 🔄 CI/CD — Automated Terraform Deployment
 
-Download the latest Docker Compose file and use `docker compose` to run the application containers:
+GitHub Actions pipeline: `.github/workflows/terraform-deploy.yml`
 
-```
-wget https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/docker-compose.yaml
+### 🔧 Workflow Overview
+| Step | Description |
+|------|-------------|
+| **Checkout** | Fetches repository code |
+| **Configure AWS Credentials** | Assumes OIDC role into AWS |
+| **Setup Terraform** | Installs and configures Terraform |
+| **Terraform Init** | Initializes remote backend |
+| **Terraform Validate** | Validates syntax |
+| **Terraform Plan** | Creates infrastructure plan |
+| **Terraform Apply (main branch only)** | Applies changes automatically |
 
-DB_PASSWORD='<some password>' docker compose --file docker-compose.yaml up
-```
+---
 
-Open the frontend in a browser window:
+## 🚀 Deploying the Application
 
-```
-http://localhost:8888
-```
-
-To stop the containers in `docker compose` use Ctrl+C. To delete all the containers and related resources run:
-
-```
-docker compose -f docker-compose.yaml down
-```
-
-### Kubernetes
-
-This deployment method will run the application in an existing Kubernetes cluster.
-
-Pre-requisites:
-
-- Kubernetes cluster
-- `kubectl` installed locally
-
-Use `kubectl` to run the application:
-
-```
-kubectl apply -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
-kubectl wait --for=condition=available deployments --all
-```
-
-Get the URL for the frontend load balancer like so:
-
-```
-kubectl get svc ui
+### 1. **Build and Push Docker Images**
+```bash
+docker build -t retail/orders:latest src/orders
+docker push retail/orders:latest
 ```
 
-To remove the application use `kubectl` again:
+### 2. **Apply Kubernetes Configs**
+```bash
+kubectl apply -f k8s/orders-config.yaml
+kubectl apply -f k8s/orders-deployment.yaml
+kubectl apply -f k8s/orders-service.yaml
+```
+
+### 3. **Verify Service**
+```bash
+kubectl get svc -n retail
+curl http://<LOADBALANCER-DNS>/actuator/health
+```
+
+Expected response:
+```json
+{"status":"UP"}
+```
+
+---
+
+## 🧠 Verification & Testing
+
+| Test | Command | Expected Result |
+|------|----------|----------------|
+| Check EKS clusters | `aws eks list-clusters --profile readonly` | Shows `bedrock-retail-eks` |
+| List DynamoDB tables | `aws dynamodb list-tables --profile readonly` | Lists `retail-carts` |
+| Verify read-only user | `aws sts get-caller-identity --profile readonly` | Returns IAM user ARN |
+| Access health check | `curl <LB-DNS>/actuator/health` | Returns status `UP` |
+
+---
+
+## 📁 Repository Structure
 
 ```
-kubectl delete -f https://github.com/aws-containers/retail-store-sample-app/releases/latest/download/kubernetes.yaml
+.
+├── src/
+│   ├── orders/
+│   │   ├── Dockerfile
+│   │   ├── pom.xml
+│   │   └── src/main/java/com/amazon/sample/orders
+│   ├── catalog/
+│   └── cart/
+├── k8s/
+│   ├── orders-config.yaml
+│   ├── orders-deployment.yaml
+│   └── orders-service.yaml
+├── terraform/
+│   └── (Terraform IaC)
+└── .github/workflows/
+    └── terraform-deploy.yml
 ```
 
-### Terraform
+---
 
-The following options are available to deploy the application using Terraform:
+## 🧭 Architecture Diagram
 
-| Name                                             | Description                                                                                                     |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| [Amazon EKS](./terraform/eks/default/)           | Deploys the application to Amazon EKS using other AWS services for dependencies, such as RDS, DynamoDB etc.     |
-| [Amazon EKS (Minimal)](./terraform/eks/minimal/) | Deploys the application to Amazon EKS using in-cluster dependencies instead of RDS, DynamoDB etc.               |
-| [Amazon ECS](./terraform/ecs/default/)           | Deploys the application to Amazon ECS using other AWS services for dependencies, such as RDS, DynamoDB etc.     |
-| [AWS App Runner](./terraform/apprunner/)         | Deploys the application to AWS App Runner using other AWS services for dependencies, such as RDS, DynamoDB etc. |
+```mermaid
+graph TD
 
-## Security
+subgraph GitHub["GitHub Actions CI/CD"]
+    A1[Checkout Code] --> A2[Configure AWS Credentials via OIDC]
+    A2 --> A3[Terraform Init/Plan/Apply]
+end
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+subgraph AWS["AWS Cloud (us-east-1)"]
+    A3 --> B1[VPC (Public + Private Subnets)]
+    B1 --> B2[EKS Cluster]
+    B2 -->|Deploys| B3[Orders Service Pod]
+    B2 -->|Deploys| B4[Catalog Service Pod]
+    B2 -->|Deploys| B5[Cart Service Pod]
+    B3 -->|External Access| B6[LoadBalancer Service]
+    B4 -->|Connects| B7[RDS MySQL Database]
+    B5 -->|Connects| B8[DynamoDB Table]
+    B2 -->|Monitoring| B9[CloudWatch Logs]
+end
 
-## License
+subgraph IAM["AWS IAM"]
+    C1[OIDC Provider: token.actions.githubusercontent.com]
+    C2[Role: bedrock-terraform-role]
+    C3[User: developer-readonly]
+    C1 --> C2
+    C2 --> A2
+end
 
-This project is licensed under the MIT-0 License.
+C3 -.->|CLI Access| AWS
+B9 -->|Metrics| GitHub
+```
 
-This package depends on and may incorporate or retrieve a number of third-party
-software packages (such as open source packages) at install-time or build-time
-or run-time ("External Dependencies"). The External Dependencies are subject to
-license terms that you must accept in order to use this package. If you do not
-accept all of the applicable license terms, you should not use this package. We
-recommend that you consult your company’s open source approval policy before
-proceeding.
+---
 
-Provided below is a list of External Dependencies and the applicable license
-identification as indicated by the documentation associated with the External
-Dependencies as of Amazon's most recent review.
+## 🧰 Tools & Technologies
 
-THIS INFORMATION IS PROVIDED FOR CONVENIENCE ONLY. AMAZON DOES NOT PROMISE THAT
-THE LIST OR THE APPLICABLE TERMS AND CONDITIONS ARE COMPLETE, ACCURATE, OR
-UP-TO-DATE, AND AMAZON WILL HAVE NO LIABILITY FOR ANY INACCURACIES. YOU SHOULD
-CONSULT THE DOWNLOAD SITES FOR THE EXTERNAL DEPENDENCIES FOR THE MOST COMPLETE
-AND UP-TO-DATE LICENSING INFORMATION.
+| Category | Tool |
+|-----------|------|
+| **Infrastructure** | Terraform, AWS, EKS |
+| **CI/CD** | GitHub Actions |
+| **Containerization** | Docker |
+| **Orchestration** | Kubernetes |
+| **Database** | RDS (MySQL), DynamoDB |
+| **Monitoring** | AWS CloudWatch, Spring Actuator |
+| **Programming** | Java 21 (Spring Boot 3.5.5) |
 
-YOUR USE OF THE EXTERNAL DEPENDENCIES IS AT YOUR SOLE RISK. IN NO EVENT WILL
-AMAZON BE LIABLE FOR ANY DAMAGES, INCLUDING WITHOUT LIMITATION ANY DIRECT,
-INDIRECT, CONSEQUENTIAL, SPECIAL, INCIDENTAL, OR PUNITIVE DAMAGES (INCLUDING
-FOR ANY LOSS OF GOODWILL, BUSINESS INTERRUPTION, LOST PROFITS OR DATA, OR
-COMPUTER FAILURE OR MALFUNCTION) ARISING FROM OR RELATING TO THE EXTERNAL
-DEPENDENCIES, HOWEVER CAUSED AND REGARDLESS OF THE THEORY OF LIABILITY, EVEN
-IF AMAZON HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THESE LIMITATIONS
-AND DISCLAIMERS APPLY EXCEPT TO THE EXTENT PROHIBITED BY APPLICABLE LAW.
+---
 
-MariaDB Community License - [LICENSE](https://mariadb.com/kb/en/mariadb-licenses/)
-MySQL Community Edition - [LICENSE](https://github.com/mysql/mysql-server/blob/8.0/LICENSE)
+## 🧩 Maintainer
+**Name:** Mayowa Oladunni  
+**Role:** Cloud Engineering Student — AltSchool Africa  
+**Project:** Tinyuka Second Semester Cloud Engineering Project  
+**GitHub:** [@SirM28](https://github.com/SirM28)
+
+---
+
+## ✅ Evaluation Summary
+
+| Rubric Criteria | Evidence |
+|------------------|-----------|
+| **EKS + VPC via IaC** | Terraform-provisioned resources verified via outputs |
+| **IAM Roles (Least Privilege)** | Custom IAM role & policy in Terraform |
+| **Automated CI/CD via GitHub Actions** | `terraform-deploy.yml` with OIDC |
+| **Microservices Deployment** | Orders service deployed to EKS with LoadBalancer |
+| **In-cluster Dependencies** | ConfigMaps & internal networking configured |
+| **Read-only IAM User** | Verified through AWS CLI |
+| **Organized Repository + README** | Clean structure and detailed documentation |
+
+---
+
+## 🏁 Final Note
+
+This project demonstrates a **complete cloud-native deployment pipeline** —  
+from infrastructure provisioning to microservice orchestration —  
+fully automated, secure, and production-ready using AWS, Terraform, and GitHub Actions.
