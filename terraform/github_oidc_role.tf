@@ -1,8 +1,4 @@
-##############################################
-# GitHub OIDC Provider & Terraform Role
-##############################################
-
-# Create the GitHub OIDC provider if it doesn't exist
+# --- GitHub OIDC Provider ---
 resource "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 
@@ -11,15 +7,13 @@ resource "aws_iam_openid_connect_provider" "github" {
   ]
 
   thumbprint_list = [
-    # GitHub's current OIDC thumbprint
     "6938fd4d98bab03faadb97b34396831e3780aea1"
   ]
 }
 
-# IAM Role for GitHub Actions Terraform Deployment
-resource "aws_iam_role" "terraform_github_actions" {
+# --- IAM Role for GitHub Actions ---
+resource "aws_iam_role" "github_actions_role" {
   name = "bedrock-terraform-role"
-  description = "Role assumed by GitHub Actions workflows to deploy infrastructure using Terraform"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -35,8 +29,8 @@ resource "aws_iam_role" "terraform_github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            # Replace this with your actual GitHub username/repo
-            "token.actions.githubusercontent.com:sub" = "repo:MayowaOladunni/retail-store-sample-app:*"
+            # ✅ Replace "SirM28/retail-store-sample-app:*" with your actual GitHub org/repo
+            "token.actions.githubusercontent.com:sub" = "repo:SirM28/retail-store-sample-app:*"
           }
         }
       }
@@ -44,14 +38,13 @@ resource "aws_iam_role" "terraform_github_actions" {
   })
 }
 
-# Attach AdministratorAccess for full Terraform capability (simplified for project)
-resource "aws_iam_role_policy_attachment" "terraform_admin_attach" {
-  role       = aws_iam_role.terraform_github_actions.name
+# --- Attach permissions for Terraform to manage infra ---
+resource "aws_iam_role_policy_attachment" "github_actions_admin" {
+  role       = aws_iam_role.github_actions_role.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
-# Output the role ARN for GitHub Actions
-output "terraform_github_role_arn" {
-  description = "IAM Role ARN to use in GitHub Actions"
-  value       = aws_iam_role.terraform_github_actions.arn
+# --- Output the role ARN ---
+output "github_actions_role_arn" {
+  value = aws_iam_role.github_actions_role.arn
 }

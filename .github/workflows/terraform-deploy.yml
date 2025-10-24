@@ -1,63 +1,59 @@
-name: Terraform CI/CD - Project Bedrock
+name: Terraform Deploy
 
 on:
   push:
     branches:
       - main
       - dev
-  pull_request:
-    branches:
-      - main
-      - dev
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.9.5
+
+permissions:
+  id-token: write    # Required for OIDC authentication
+  contents: read     # Allows workflow to read repo content
 
 jobs:
   terraform:
-    name: Deploy Infrastructure
+    name: Terraform Infrastructure
     runs-on: ubuntu-latest
 
-    permissions:
-      id-token: write
-      contents: read
-
-    env:
-      AWS_REGION: us-east-1
-      TF_WORKING_DIR: ./terraform
+    defaults:
+      run:
+        working-directory: terraform   # Directory containing Terraform code
 
     steps:
-      # Checkout repo
-      - name: Checkout repository
+      # 🧱 Step 1: Checkout source code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # Configure AWS credentials (OIDC)
+      # ☁️ Step 2: Configure AWS credentials via OIDC (secure and keyless)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::156551338981:role/bedrock-terraform-role
           aws-region: ${{ env.AWS_REGION }}
 
-      # Setup Terraform
+      # 🧰 Step 3: Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.8
+          terraform_version: ${{ env.TF_VERSION }}
 
-      # Initialize Terraform
+      # 🧪 Step 4: Initialize Terraform
       - name: Terraform Init
-        working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform init -input=false
 
-      # Validate Terraform
+      # 🔍 Step 5: Validate syntax
       - name: Terraform Validate
-        working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
 
-      # Terraform Plan
+      # 🧠 Step 6: Plan infrastructure changes
       - name: Terraform Plan
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform plan -input=false
+        run: terraform plan -input=false -out=tfplan
 
-      # Terraform Apply (only on main branch)
+      # 🚀 Step 7: Apply infrastructure (only on main branch)
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -auto-approve tfplan
