@@ -1,0 +1,26 @@
+# Simple test container to debug mvnw execution
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023
+
+RUN dnf --setopt=install_weak_deps=False install -y \
+    java-21-amazon-corretto-headless \
+    maven \
+    shadow-utils \
+    && dnf clean all
+
+WORKDIR /app
+
+# Copy your mvnw and project setup
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+# Make sure it's executable
+RUN chmod +x mvnw
+
+# List files to confirm everything's here
+RUN ls -la
+
+# Try to run mvnw (just check version)
+RUN ./mvnw -v || echo "mvnw failed to run"
+
+CMD ["/bin/bash"]
